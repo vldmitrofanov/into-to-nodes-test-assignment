@@ -1,0 +1,22 @@
+//
+.custom-inline-form {
+    display: flex;
+    align-items: flex-end;
+
+    width: 100%;
+    margin-bottom: 1rem;
+    .form-group {
+        margin-bottom: 0 !important;
+        margin-right: 4px;
+        width: 100%;
+    }
+    button {
+        white-space: nowrap;
+    }
+}
+.hide-td {
+    border-top: 1px solid transparent !important;
+    span {
+        display: none;
+    }
+}
