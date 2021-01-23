@@ -31,6 +31,13 @@
                 @updated="fetchClients"
             ></booking-list>
         </div>
+        <div class="mb-5">
+            <a
+                href="https://github.com/vldmitrofanov/into-to-nodes-test-assignment"
+                target="_blank"
+                >Git repository</a
+            >
+        </div>
     </div>
 </template>
 <script>
