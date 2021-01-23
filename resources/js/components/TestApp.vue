@@ -76,7 +76,6 @@ export default {
             this.expertsSrc = response.data.experts;
         },
         async fetchClients() {
-            //this.clients = [];
             const url = `/api/clients`;
             const response = await axios.get(url);
             this.clients = response.data.clients;

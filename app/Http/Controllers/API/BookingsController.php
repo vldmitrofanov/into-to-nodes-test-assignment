@@ -57,14 +57,14 @@ class BookingsController extends Controller
         $last = sizeof($bookings) - 1;
         $expert_ids = [];
         // debug: 
-        $output = new \Symfony\Component\Console\Output\ConsoleOutput();
-        $output->writeln("<info> " . $date . "</info>");
+        //$output = new \Symfony\Component\Console\Output\ConsoleOutput();
+        // $output->writeln("<info> " . $date . "</info>");
         foreach ($bookings as $key => $b) {
-            $output->writeln("<info></info>");
+            // $output->writeln("<info></info>");
             $cur_date_start = \Carbon\Carbon::parse($date . " " . $b->time_start);
             $cur_date_end = \Carbon\Carbon::parse($date . " " . $b->time_end);
 
-            $output->writeln("<info> Start of the set:  " . $cur_date_start->toDateTimeString() . "</info>");
+            // $output->writeln("<info> Start of the set:  " . $cur_date_start->toDateTimeString() . "</info>");
 
             if ($cur_date_start == $start) {
                 $start = $cur_date_end;
@@ -72,8 +72,8 @@ class BookingsController extends Controller
             } elseif ($cur_date_start > $start) {
                 // if there is a gap before
                 while ($cur_date_start > $start && $cur_date_start->diffInHours($start) >= 1) {
-                    $output->writeln("<info> Before statement. Diff:  " . $cur_date_start->diffInHours($start) . "</info>");
-                    $output->writeln("<info> Cur start " . $cur_date_start->toDateTimeString() . "----- Start " . $start->toDateTimeString() . "</info>");
+                    // $output->writeln("<info> Before statement. Diff:  " . $cur_date_start->diffInHours($start) . "</info>");
+                    // $output->writeln("<info> Cur start " . $cur_date_start->toDateTimeString() . "----- Start " . $start->toDateTimeString() . "</info>");
                     $available_booking = \App\Bookings::whereNull('client_id')
                         ->whereNotNull('expert_id')
                         ->where('date',  $date)
@@ -83,7 +83,7 @@ class BookingsController extends Controller
                         ->inRandomOrder()
                         ->first();
                     if (!empty($available_booking)) {
-                        $output->writeln("<warning> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</warning>");
+                        // $output->writeln("<warning> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</warning>");
                         $available_booking->client_id = $client->id;
                         $available_booking->update();
                         $start = \Carbon\Carbon::parse($date . " " . $available_booking->time_end);
@@ -101,8 +101,8 @@ class BookingsController extends Controller
                 $previous_end = $start;
 
                 while ($end > $start && $end->diffInHours($start) >= 1) {
-                    $output->writeln("<info> End statement. Diff:  " . $end->diffInHours($start) . "</info>");
-                    $output->writeln("<info> Cur end " . $cur_date_end->toDateTimeString() . " ----- Start " . $start->toDateTimeString() . "</info>");
+                    // $output->writeln("<info> End statement. Diff:  " . $end->diffInHours($start) . "</info>");
+                    // $output->writeln("<info> Cur end " . $cur_date_end->toDateTimeString() . " ----- Start " . $start->toDateTimeString() . "</info>");
                     $available_booking = \App\Bookings::whereNull('client_id')
                         ->whereNotNull('expert_id')
                         ->where('date',  $date)
@@ -112,7 +112,7 @@ class BookingsController extends Controller
                         ->inRandomOrder()
                         ->first();
                     if (!empty($available_booking)) {
-                        $output->writeln("<info> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</info>");
+                        // $output->writeln("<info> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</info>");
                         $available_booking->client_id = $client->id;
                         $available_booking->save();
                         $start = \Carbon\Carbon::parse($date . " " . $available_booking->time_end);
@@ -124,7 +124,7 @@ class BookingsController extends Controller
                 }
             }
         }
-        $output->writeln("<info> ============================ </info>");
-        $output->writeln("<info>  </info>");
+        // $output->writeln("<info> ============================ </info>");
+        // $output->writeln("<info>  </info>");
     }
 }
