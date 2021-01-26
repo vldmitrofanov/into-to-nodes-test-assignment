@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BookingsController extends Controller
 {
@@ -30,9 +31,22 @@ class BookingsController extends Controller
 
         $dates = \App\Bookings::where('client_id', $client->id)->distinct()->select('date')->orderBy('date')->pluck('date');
 
+        $excluded = \App\Bookings::whereNotNull('expert_id')
+            ->whereNotNull('client_id')
+            ->distinct()
+            ->select('expert_id')
+            ->orderBy('expert_id')
+            ->pluck('expert_id');
+
+        $ranks = \App\Bookings::whereNotNull('expert_id')
+            ->groupBy('expert_id')
+            ->orderBy('count')
+            ->select('bookings.*', DB::raw('COUNT(expert_id) as count'))
+            ->pluck('expert_id')
+            ->toArray();
 
         foreach ($dates as $date) {
-            $this->autoSetForDate($date, $client);
+            $this->autoSetForDate($date, $client, $excluded, $ranks);
         }
 
         return response()->json(['status' => 'OK']);
@@ -48,47 +62,55 @@ class BookingsController extends Controller
         return response()->json(['status' => 'OK']);
     }
 
-    private function autoSetForDate($date, \App\Clients $client)
+    private function findAndAssingBookingBlock($date, $start, $client, &$expert_ids, $ranks)
     {
+        $block_end = $start;
+        $available_bookings = \App\Bookings::whereNull('client_id')
+            ->whereNotNull('expert_id')
+            ->where('date',  $date)
+            ->where('time_start', '>=', $start->toTimeString())
+            ->where('time_start', '<', $block_end->addHour()->toTimeString())
+            ->whereNotIn('expert_id', $expert_ids)
+            ->get();
+
+        if ($available_bookings->count() > 0) {
+            $sorted_bookings = $available_bookings->sortBy(function ($person) use ($ranks) {
+                return array_search($person->expert_id, $ranks);
+            });
+            $b = $sorted_bookings->values()->first();
+            $b->client_id = $client->id;
+            $b->update();
+            $start = \Carbon\Carbon::parse($date . " " . $b->time_end);
+            $expert_ids[] = $b->expert_id;
+            return $start;
+        }
+        return null;
+    }
+
+    private function autoSetForDate($date, \App\Clients $client, &$expert_ids, $ranks)
+    {
+        /* 
+            to debug to console use:
+            $output = new \Symfony\Component\Console\Output\ConsoleOutput();
+            $output->writeln("<info> " . $date . "</info>");
+        */
         $bookings = \App\Bookings::where('client_id', $client->id)->where('date', $date)->orderBy('time_start')->get();
         $start = \Carbon\Carbon::parse($date . " " . self::STARTHOUR);
         $end = \Carbon\Carbon::parse($date . " " . self::ENDHOUR);
-        $previous_end = $start;
         $last = sizeof($bookings) - 1;
-        $expert_ids = [];
-        // debug: 
-        //$output = new \Symfony\Component\Console\Output\ConsoleOutput();
-        // $output->writeln("<info> " . $date . "</info>");
+
         foreach ($bookings as $key => $b) {
-            // $output->writeln("<info></info>");
             $cur_date_start = \Carbon\Carbon::parse($date . " " . $b->time_start);
             $cur_date_end = \Carbon\Carbon::parse($date . " " . $b->time_end);
 
-            // $output->writeln("<info> Start of the set:  " . $cur_date_start->toDateTimeString() . "</info>");
-
             if ($cur_date_start == $start) {
                 $start = $cur_date_end;
-                $previous_end = $start;
             } elseif ($cur_date_start > $start) {
                 // if there is a gap before
                 while ($cur_date_start > $start && $cur_date_start->diffInHours($start) >= 1) {
-                    // $output->writeln("<info> Before statement. Diff:  " . $cur_date_start->diffInHours($start) . "</info>");
-                    // $output->writeln("<info> Cur start " . $cur_date_start->toDateTimeString() . "----- Start " . $start->toDateTimeString() . "</info>");
-                    $available_booking = \App\Bookings::whereNull('client_id')
-                        ->whereNotNull('expert_id')
-                        ->where('date',  $date)
-                        ->where('time_start', '>=', $start->toTimeString())
-                        ->where('time_start', '<', $previous_end->addHour()->toTimeString())
-                        ->whereNotIn('expert_id', $expert_ids)
-                        ->inRandomOrder()
-                        ->first();
-                    if (!empty($available_booking)) {
-                        // $output->writeln("<warning> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</warning>");
-                        $available_booking->client_id = $client->id;
-                        $available_booking->update();
-                        $start = \Carbon\Carbon::parse($date . " " . $available_booking->time_end);
-                        $previous_end = $start;
-                        $expert_ids[] = $available_booking->expert_id;
+                    $result = $this->findAndAssingBookingBlock($date, $start, $client, $expert_ids, $ranks);
+                    if ($result !== null) {
+                        $start = $result;
                     } else {
                         $start->addHour();
                     }
@@ -98,33 +120,15 @@ class BookingsController extends Controller
             // if this is the last booking and there is a gap longer than an hour
             if ($key == $last) {
                 $start = $cur_date_end;
-                $previous_end = $start;
-
                 while ($end > $start && $end->diffInHours($start) >= 1) {
-                    // $output->writeln("<info> End statement. Diff:  " . $end->diffInHours($start) . "</info>");
-                    // $output->writeln("<info> Cur end " . $cur_date_end->toDateTimeString() . " ----- Start " . $start->toDateTimeString() . "</info>");
-                    $available_booking = \App\Bookings::whereNull('client_id')
-                        ->whereNotNull('expert_id')
-                        ->where('date',  $date)
-                        ->where('time_start', '>=', $start->toTimeString())
-                        ->where('time_start', '<', $previous_end->addHour()->toTimeString())
-                        ->whereNotIn('expert_id', $expert_ids)
-                        ->inRandomOrder()
-                        ->first();
-                    if (!empty($available_booking)) {
-                        // $output->writeln("<info> Found" . $available_booking->time_start . "----- End" . $available_booking->time_end . "</info>");
-                        $available_booking->client_id = $client->id;
-                        $available_booking->save();
-                        $start = \Carbon\Carbon::parse($date . " " . $available_booking->time_end);
-                        $previous_end = $start;
-                        $expert_ids[] = $available_booking->expert_id;
+                    $result = $this->findAndAssingBookingBlock($date, $start, $client, $expert_ids, $ranks);
+                    if ($result !== null) {
+                        $start = $result;
                     } else {
                         $start->addHour();
                     }
                 }
             }
         }
-        // $output->writeln("<info> ============================ </info>");
-        // $output->writeln("<info>  </info>");
     }
 }
