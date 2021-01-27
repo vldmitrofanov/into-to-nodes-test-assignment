@@ -17,7 +17,7 @@ class CreateExpertsAvailabilitiesTable extends Migration
             $table->id();
             $table->date('date');
             $table->time('time_start');
-            $table->tinyInteger('time_end');
+            $table->time('time_end');
             $table->bigInteger('expert_id')->unsigned();
             $table->timestamps();
 

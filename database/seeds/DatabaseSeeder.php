@@ -27,8 +27,8 @@ class DatabaseSeeder extends Seeder
         $csvFile = base_path('database/seeds/csv/' . $csvFileName);
         $experts_schedule = $this->readCSV($csvFile, array('delimiter' => ','));
         foreach ($experts_schedule as $sh) {
+            if (empty($sh)) continue;
             $name = trim($sh[0]);
-            if (empty($name)) continue;
             $exp = \App\Experts::where('name', $name)->first();
             if (empty($exp)) {
                 $exp = new \App\Experts();
